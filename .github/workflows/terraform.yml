@@ -64,16 +64,21 @@ jobs:
               run: terraform apply -auto-approve -input=false -parallelism=1 planfile
 
             - name: Configure AWS credentials
+              id:  aws_login
               uses: aws-actions/configure-aws-credentials@v1
               with:
                 aws-access-key-id: ${{secrets.AWS_ACCESS_KEY}}
                 aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-                aws-region: us-east-1
+                aws-region: ${{secrets.AWS_EKS_REGION}}
 
             - name: Get Kube config file
               id: getconfig
               if: steps.terra_apply.outcome == 'success'
               run: aws eks update-kubeconfig --region ${{env.AWS_REGION}} --name ${{env.EKS_CLUSTER}}
+
+            - name: Check for User's Identity
+              if: steps.aws_login == 'success'
+              run: aws sts get-caller-identity
 
             - name: Install Ingress controller
               if: steps.terra_apply.outcome == 'success' && steps.getconfig.outcome == 'success'
